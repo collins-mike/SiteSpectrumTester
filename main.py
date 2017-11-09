@@ -34,12 +34,23 @@ from PyQt4.Qt import QTextEdit
 class Application(QMainWindow):
     def __init__(self, parent=None):
         QMainWindow.__init__(self, parent)
-        self.setWindowTitle("Race Site Tester")
+        self.setWindowTitle("Race Site RF Spectrum Tester")
         self.createForm()
         self.foundSpec=False
         self.specan=SpecAnalyzer()
         
     def createForm(self):
+        #=======================================================================
+        #
+        #          Name:    createForm
+        #
+        #    Parameters:    none
+        #
+        #        Return:    none
+        #
+        #   Description:    create GUI
+        #
+        #=======================================================================
         
         #=======================================================================
         # setup layout
@@ -64,6 +75,10 @@ class Application(QMainWindow):
         self.runInfo.setEnabled(False)
         fbox.addRow(self.btn_run,self.runInfo)
         
+        self.btn_saveAs=QPushButton("Save As")
+        self.btn_saveAs.setEnabled(False)
+        fbox.addRow(self.btn_saveAs,QLabel('Save Current Data'))
+        
         #=======================================================================
         # create plot
         #=======================================================================
@@ -80,6 +95,17 @@ class Application(QMainWindow):
         
         
     def click_Run(self):
+        #=======================================================================
+        #
+        #          Name:    click_Run
+        #
+        #    Parameters:    none
+        #
+        #        Return:    none
+        #
+        #   Description:    runs consecutive sweeps in 5 different bandwidths
+        #
+        #=======================================================================
         TEST_NO=20
         canceled=False
         
@@ -87,27 +113,32 @@ class Application(QMainWindow):
         
         self.btn_run.setEnabled(False)
         self.runInfo.setText('Running Test...')
+        self.btn_saveAs.setEnabled(False)
+        
         QApplication.instance().processEvents()
         progress=QProgressDialog(labelText="Running Test",minimum=0,maximum=TEST_NO*5)
         progress.show()
-        progress.move(10,10)
+#         progress.move(10,10)
         prog=0
         
         
-        #=======================================================================
-        # 5-6Ghz
-        #=======================================================================
-        self.plot.cla()
+#=======================================================================
+#    5.5GHz
+#=======================================================================
+        
         #===================================================================
         # setup signal hound
         #===================================================================
         try:
-            #setup sweep coupling if maxhold is selected it will use 100ms for sweeptime
             self.specan.sh.configureCenterSpan(5500e6,1000e6)
             self.specan.sh.configureSweepCoupling(39.45e3,39.45e3,0.05,"native","no-spur-reject")
         except:
             print "specan setup error" 
-        
+            
+            #===================================================================
+            # run sweeps
+            #===================================================================
+        self.plot.cla()
         for q in range(0,TEST_NO):
             dataReturn=self.specan.get_full_sweep()
                 
@@ -119,41 +150,48 @@ class Application(QMainWindow):
 
             dataiter=0
             freqArray=[]
+            
             if not reDraw:
                 self.plot.cla()
+                
             self.plot.set_xlim([5000e6,6000e6])
             self.plot.set_title('Center: 5.5GHz    Span: 5GHz ~ 6GHz',fontsize=14,fontweight=200)
             self.plot.set_ylim([-150,-0])
             self.plot.set_xlabel("Frequency (Hz)")
             self.plot.set_ylabel("Power (dBm)")
             self.plot.grid(True)
+            
             for i in dataReturn:
                 freqArray.append(int(5000e6+(dataiter*binsize)))
                 dataiter+=1
+                
             progress.setValue(prog)   
             self.plot.plot(freqArray,dataReturn,lw=.5, color='r')      
 #             self.plot.scatter(freqArray,dataReturn,c=matplotlib.cm.jet(np.abs(dataReturn)), edgecolor='none',marker=',', s=0.75)  
             self.canvas.draw()
+            
             if progress.wasCanceled():
                 canceled=True
                 break
+            
             prog+=1
             QApplication.instance().processEvents()
         
         self.canvas.print_figure('temp_5_5GHz.png')    
         
-        #=======================================================================
-        # 3.75-4.25GHz
-        #=======================================================================
-        self.plot.cla()
+#=======================================================================
+#    4GHz
+#=======================================================================
+        
         #===================================================================
         # setup signal hound
         #===================================================================
         try:
-            #setup sweep coupling if maxhold is selected it will use 100ms for sweeptime
             self.specan.sh.configureCenterSpan(4000e6,1000e6)
         except:
             print "specan setup error"    
+            
+        self.plot.cla()
         
         for testNo in range(0,TEST_NO):
             try:
@@ -171,41 +209,47 @@ class Application(QMainWindow):
             freqArray=[]
             if not reDraw:
                 self.plot.cla()
+                
             self.plot.set_xlim([3750e6,4250e6])
             self.plot.set_title('Center: 4GHz    Span: 3.75GHz ~ 4.25GHz',fontsize=14,fontweight=200)
             self.plot.set_ylim([-150,-0])
             self.plot.set_xlabel("Frequency (Hz)")
             self.plot.set_ylabel("Power (dBm)")
             self.plot.grid(True)
+            
             for i in dataReturn:
                 freqArray.append(int(3750e6+(dataiter*binsize)))
                 dataiter+=1
+                
             progress.setValue(prog)    
             self.plot.plot(freqArray,dataReturn,lw=.5,c='r')      
 #             self.plot.scatter(freqArray,dataReturn,c=matplotlib.cm.jet(np.abs(dataReturn)), edgecolor='none',marker=',', s=0.75)  
             self.canvas.draw()
+            
             if progress.wasCanceled():
                 canceled=True
                 break
+            
             prog+=1
             QApplication.instance().processEvents()
             
         self.canvas.print_figure('temp_4GHz.png')  
         
-        #=======================================================================
-        # 865Mhz - 965MHz
-        #=======================================================================
-        self.plot.cla()
+#=======================================================================
+# 915MHz 
+#=======================================================================
+        
         #===================================================================
         # setup signal hound
         #===================================================================
         try:
-            #setup sweep coupling if maxhold is selected it will use 100ms for sweeptime
             self.specan.sh.configureCenterSpan(915e6,100e6)
             self.specan.sh.configureSweepCoupling(39.45e3,39.45e3,0.05,"native","no-spur-reject")
         except:
-            print "specan setup error"    
-        
+            print "specan setup error"  
+            
+              
+        self.plot.cla()
         for testNo in range(0,TEST_NO):
             try:
                 dataReturn=self.specan.get_full_sweep()
@@ -228,25 +272,29 @@ class Application(QMainWindow):
             self.plot.set_xlabel("Frequency (Hz)")
             self.plot.set_ylabel("Power (dBm)")
             self.plot.grid(True)
+            
             for i in dataReturn:
                 freqArray.append(int(865e6+(dataiter*binsize)))
                 dataiter+=1
+                
             progress.setValue(prog)    
             self.plot.plot(freqArray,dataReturn,lw=.5,c='r')     
 #             self.plot.scatter(freqArray,dataReturn,c=matplotlib.cm.jet(np.abs(dataReturn)), edgecolor='none',marker=',', s=0.75)    
             self.canvas.draw()
+            
             if progress.wasCanceled():
                 canceled=True
                 break
+            
             prog+=1
             QApplication.instance().processEvents()
             
         self.canvas.print_figure('temp_915MHz.png')  
             
-        #=======================================================================
-        # 865Mhz - 965MHz
-        #=======================================================================
-        self.plot.cla()
+#=======================================================================
+# 863MHz
+#=======================================================================
+        
         #===================================================================
         # setup signal hound
         #===================================================================
@@ -254,8 +302,9 @@ class Application(QMainWindow):
             #setup sweep coupling if maxhold is selected it will use 100ms for sweeptime
             self.specan.sh.configureCenterSpan(863e6,100e6)
         except:
-            print "specan setup error"    
-        
+            print "specan setup error"  
+              
+        self.plot.cla()
         for testNo in range(0,TEST_NO):
             try:
                 dataReturn=self.specan.get_full_sweep()
@@ -270,6 +319,7 @@ class Application(QMainWindow):
 
             dataiter=0
             freqArray=[]
+            
             if not reDraw:
                 self.plot.cla()
             self.plot.set_xlim([813e6,913e6])
@@ -278,37 +328,39 @@ class Application(QMainWindow):
             self.plot.set_xlabel("Frequency (Hz)")
             self.plot.set_ylabel("Power (dBm)")
             self.plot.grid(True)
+            
             for i in dataReturn:
                 freqArray.append(int(813e6+(dataiter*binsize)))
                 dataiter+=1
+                
             progress.setValue(prog)    
             self.plot.plot(freqArray,dataReturn,lw=.5, c='r')      
 #             self.plot.scatter(freqArray,dataReturn,c=matplotlib.cm.jet(np.abs(dataReturn)), edgecolor='none',marker=',', s=0.75)  
             self.canvas.draw()
+            
             if progress.wasCanceled():
                 canceled=True
                 break
+            
             prog+=1
             QApplication.instance().processEvents()
             
         self.canvas.print_figure('temp_863MHz.png')  
             
-        #=======================================================================
-        # Wide Band
-        #=======================================================================
-        self.plot.cla()
-#         self.plot.set_xlim(100e6,6000e6)
-#         self.plot.set_title('Wide Band',fontsize=14,fontweight=200)
+#=======================================================================
+# Wide Band
+#=======================================================================
+        
         #===================================================================
         # setup signal hound
         #===================================================================
         try:
-            #setup sweep coupling if maxhold is selected it will use 100ms for sweeptime
             self.specan.sh.configureCenterSpan(3015e6,5970e6)
             self.specan.sh.configureSweepCoupling(300e3,300e3,0.001,"native","no-spur-reject")
         except:
             print "specan setup error"    
-        
+            
+        self.plot.cla()
         for testNo in range(0,TEST_NO):
             try:
                 dataReturn=self.specan.get_full_sweep()
@@ -322,24 +374,30 @@ class Application(QMainWindow):
             #calculate frequencies from trace info
             dataiter=0
             freqArray=[]
+            
             if not reDraw:
                 self.plot.cla()
+                
             self.plot.set_xlim(100e6,6000e6)
             self.plot.set_title('Wide Band    Span: (0~6GHz)',fontsize=14,fontweight=200)
             self.plot.set_ylim([-150,-0])
             self.plot.set_xlabel("Frequency (Hz)")
             self.plot.set_ylabel("Power (dBm)")
             self.plot.grid(True)
+            
             for i in dataReturn:
                 freqArray.append(int(30e6+(dataiter*binsize)))
                 dataiter+=1
+                
             progress.setValue(prog)  
             self.plot.plot(freqArray,dataReturn,lw=.5, c='r')      
 #             self.plot.scatter(freqArray,dataReturn,c=matplotlib.cm.jet(np.abs(dataReturn)), edgecolor='none',marker=',', s=0.75)  
             self.canvas.draw()
+            
             if progress.wasCanceled():
                 canceled=True
                 break
+            
             prog+=1
             QApplication.instance().processEvents()
         
@@ -347,26 +405,60 @@ class Application(QMainWindow):
         
         progress.close()
         
+        #=======================================================================
+        # Test Complete
+        #=======================================================================
+        
         msg = QMessageBox()
-        msg.setInformativeText("Test complete. would you like to save this data?")
+        msg.setWindowTitle('Test Complete')
+        msg.setInformativeText("Test complete!\n\nWould you like to save this data?")
         msg.setIcon(QMessageBox.Information)
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
         msg.buttonClicked.connect(self.msgbtn)
+        
         if canceled==False:
             msg.exec_()
             
         self.runInfo.setText('Ready to run test')
+        self.btn_saveAs.setEnabled(True)
         self.btn_run.setEnabled(True)
         
     def msgbtn(self,i):
+        #=======================================================================
+        #
+        #          Name:    msgbtn
+        #
+        #    Parameters:    i is an instance of a yes or no question dialog
+        #
+        #        Return:    none    
+        #
+        #   Description:    sets behavior after yes or no is clicked on by user
+        #
+        #=======================================================================
         print "Button pressed is:",i.text()
-        if i.text()== "&Yes":
+        if i.text()== "Yes":
             self.saveData()
             
         elif i.text()== "No":
             pass    
         
     def saveData(self):
+        #=======================================================================
+        #
+        #          Name:    saveData
+        #
+        #    Parameters:    None    
+        #
+        #        Return:    None    
+        #
+        #   Description:    saves all plots to a .xlsx file, give warning message if save error
+        #
+        #=======================================================================
+        
+        self.btn_saveAs.setEnabled(False)
+        self.btn_run.setEnabled(False)
+        QApplication.instance().processEvents()
+        
         file_choices = "Excel Workbook ( *.xlsx)"
         path = unicode(QFileDialog.getSaveFileName(self, 
                         'Save', '', 
@@ -397,12 +489,25 @@ class Application(QMainWindow):
         try:
             wb.save(path)
         except: 
-            print "Error"
-            self.show_errorDialog("File Save Error!", "Unable to save report!", "Ensure report is not open in another program.")
+            print "file save Error"
+            self.show_errorDialog("File Save Error!", "Unable to save report!", "Ensure save location is not open in another program.")
                   
-            
+        self.btn_saveAs.setEnabled(True)
+        self.btn_run.setEnabled(True)
+
         
     def click_find(self):
+        #=======================================================================
+        #
+        #          Name:    click_find
+        #
+        #    Parameters:    none    
+        #
+        #        Return:    none
+        #
+        #   Description:    searches for specan and displays result in GUI
+        #
+        #=======================================================================
         self.deviceInfo.setText("Finding spectrum analyzer...")
         self.btn_findDevice.setEnabled(False)
         QApplication.instance().processEvents()
@@ -425,7 +530,7 @@ class Application(QMainWindow):
             try:
                 self.specan.sh.configureLevel(ref = 0, atten = 'auto')
                 self.specan.sh.configureProcUnits("log")
-                self.specan.sh.configureAcquisition("Average","log-scale")
+                self.specan.sh.configureAcquisition("min-max","log-scale")
                 self.specan.sh.configureCenterSpan(5500e6,1000e6)
                 self.specan.sh.configureSweepCoupling(100e3,100e3,0.09,"native","no-spur-reject")
                 self.specan.sh.configureGain('auto')
@@ -438,6 +543,15 @@ class Application(QMainWindow):
         else:
             self.deviceInfo.setText("No spectrum analyzer Found")
             self.btn_findDevice.setEnabled(True)
+    
+    def show_errorDialog(self,title,text,info):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Critical)
+        msg.setText(text)
+        msg.setInformativeText(info)
+        msg.setWindowTitle(title)
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.exec_()
     
     
 def main():
