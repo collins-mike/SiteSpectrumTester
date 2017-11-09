@@ -77,12 +77,13 @@ class Application(QMainWindow):
         
         self.btn_saveAs=QPushButton("Save As")
         self.btn_saveAs.setEnabled(False)
+        self.connect(self.btn_saveAs, SIGNAL('clicked()'), self.saveData)
         fbox.addRow(self.btn_saveAs,QLabel('Save Current Data'))
         
         #=======================================================================
         # create plot
         #=======================================================================
-        self.fig = Figure(figsize=(10,4))
+        self.fig = Figure(figsize=(12,5))
         self.canvas = FigureCanvas(self.fig)
         
         self.canvas.setParent(self.main_frame)
@@ -117,6 +118,7 @@ class Application(QMainWindow):
         
         QApplication.instance().processEvents()
         progress=QProgressDialog(labelText="Running Test",minimum=0,maximum=TEST_NO*5)
+        progress.setWindowTitle('Test Progress')
         progress.show()
 #         progress.move(10,10)
         prog=0
@@ -160,6 +162,7 @@ class Application(QMainWindow):
             self.plot.set_xlabel("Frequency (Hz)")
             self.plot.set_ylabel("Power (dBm)")
             self.plot.grid(True)
+            self.fig.tight_layout()
             
             for i in dataReturn:
                 freqArray.append(int(5000e6+(dataiter*binsize)))
@@ -182,227 +185,230 @@ class Application(QMainWindow):
 #=======================================================================
 #    4GHz
 #=======================================================================
-        
-        #===================================================================
-        # setup signal hound
-        #===================================================================
-        try:
-            self.specan.sh.configureCenterSpan(4000e6,1000e6)
-        except:
-            print "specan setup error"    
-            
-        self.plot.cla()
-        
-        for testNo in range(0,TEST_NO):
+        if not canceled:
+            #===================================================================
+            # setup signal hound
+            #===================================================================
             try:
-                dataReturn=self.specan.get_full_sweep()
+                self.specan.sh.configureCenterSpan(4000e6,1000e6)
             except:
-                print "error getting specan sweep"
+                print "specan setup error"    
                 
-            #get bin size in order to calculate frequencies
-            traceInfo=self.specan.sh.queryTraceInfo()
-            binsize=traceInfo["arr-bin-size"]
+            self.plot.cla()
             
-            #calculate frequencies from trace info
-
-            dataiter=0
-            freqArray=[]
-            if not reDraw:
-                self.plot.cla()
+            for testNo in range(0,TEST_NO):
+                try:
+                    dataReturn=self.specan.get_full_sweep()
+                except:
+                    print "error getting specan sweep"
+                    
+                #get bin size in order to calculate frequencies
+                traceInfo=self.specan.sh.queryTraceInfo()
+                binsize=traceInfo["arr-bin-size"]
                 
-            self.plot.set_xlim([3750e6,4250e6])
-            self.plot.set_title('Center: 4GHz    Span: 3.75GHz ~ 4.25GHz',fontsize=14,fontweight=200)
-            self.plot.set_ylim([-150,-0])
-            self.plot.set_xlabel("Frequency (Hz)")
-            self.plot.set_ylabel("Power (dBm)")
-            self.plot.grid(True)
-            
-            for i in dataReturn:
-                freqArray.append(int(3750e6+(dataiter*binsize)))
-                dataiter+=1
+                #calculate frequencies from trace info
+    
+                dataiter=0
+                freqArray=[]
+                if not reDraw:
+                    self.plot.cla()
+                    
+                self.plot.set_xlim([3750e6,4250e6])
+                self.plot.set_title('Center: 4GHz    Span: 3.75GHz ~ 4.25GHz',fontsize=14,fontweight=200)
+                self.plot.set_ylim([-150,-0])
+                self.plot.set_xlabel("Frequency (Hz)")
+                self.plot.set_ylabel("Power (dBm)")
+                self.plot.grid(True)
+                self.fig.tight_layout()
                 
-            progress.setValue(prog)    
-            self.plot.plot(freqArray,dataReturn,lw=.5,c='r')      
-#             self.plot.scatter(freqArray,dataReturn,c=matplotlib.cm.jet(np.abs(dataReturn)), edgecolor='none',marker=',', s=0.75)  
-            self.canvas.draw()
-            
-            if progress.wasCanceled():
-                canceled=True
-                break
-            
-            prog+=1
-            QApplication.instance().processEvents()
-            
-        self.canvas.print_figure('temp_4GHz.png')  
+                for i in dataReturn:
+                    freqArray.append(int(3750e6+(dataiter*binsize)))
+                    dataiter+=1
+                    
+                progress.setValue(prog)    
+                self.plot.plot(freqArray,dataReturn,lw=.5,c='r')      
+    #             self.plot.scatter(freqArray,dataReturn,c=matplotlib.cm.jet(np.abs(dataReturn)), edgecolor='none',marker=',', s=0.75)  
+                self.canvas.draw()
+                
+                if progress.wasCanceled():
+                    canceled=True
+                    break
+                
+                prog+=1
+                QApplication.instance().processEvents()
+                
+            self.canvas.print_figure('temp_4GHz.png')  
         
 #=======================================================================
 # 915MHz 
 #=======================================================================
-        
-        #===================================================================
-        # setup signal hound
-        #===================================================================
-        try:
-            self.specan.sh.configureCenterSpan(915e6,100e6)
-            self.specan.sh.configureSweepCoupling(39.45e3,39.45e3,0.05,"native","no-spur-reject")
-        except:
-            print "specan setup error"  
-            
-              
-        self.plot.cla()
-        for testNo in range(0,TEST_NO):
+        if not canceled:
+            #===================================================================
+            # setup signal hound
+            #===================================================================
             try:
-                dataReturn=self.specan.get_full_sweep()
+                self.specan.sh.configureCenterSpan(915e6,100e6)
+                self.specan.sh.configureSweepCoupling(39.45e3,39.45e3,0.05,"native","no-spur-reject")
             except:
-                print "error getting specan sweep"
+                print "specan setup error"  
                 
-            #get bin size in order to calculate frequencies
-            traceInfo=self.specan.sh.queryTraceInfo()
-            binsize=traceInfo["arr-bin-size"]
-            
-            #calculate frequencies from trace info
-
-            dataiter=0
-            freqArray=[]
-            if not reDraw:
-                self.plot.cla()
-            self.plot.set_xlim([865e6,965e6])
-            self.plot.set_title('Center: 915MHz    Span: 865MHz ~ 965MHz',fontsize=14,fontweight=200)
-            self.plot.set_ylim([-150,-0])
-            self.plot.set_xlabel("Frequency (Hz)")
-            self.plot.set_ylabel("Power (dBm)")
-            self.plot.grid(True)
-            
-            for i in dataReturn:
-                freqArray.append(int(865e6+(dataiter*binsize)))
-                dataiter+=1
+                  
+            self.plot.cla()
+            for testNo in range(0,TEST_NO):
+                try:
+                    dataReturn=self.specan.get_full_sweep()
+                except:
+                    print "error getting specan sweep"
+                    
+                #get bin size in order to calculate frequencies
+                traceInfo=self.specan.sh.queryTraceInfo()
+                binsize=traceInfo["arr-bin-size"]
                 
-            progress.setValue(prog)    
-            self.plot.plot(freqArray,dataReturn,lw=.5,c='r')     
-#             self.plot.scatter(freqArray,dataReturn,c=matplotlib.cm.jet(np.abs(dataReturn)), edgecolor='none',marker=',', s=0.75)    
-            self.canvas.draw()
-            
-            if progress.wasCanceled():
-                canceled=True
-                break
-            
-            prog+=1
-            QApplication.instance().processEvents()
-            
-        self.canvas.print_figure('temp_915MHz.png')  
+                #calculate frequencies from trace info
+    
+                dataiter=0
+                freqArray=[]
+                if not reDraw:
+                    self.plot.cla()
+                self.plot.set_xlim([865e6,965e6])
+                self.plot.set_title('Center: 915MHz    Span: 865MHz ~ 965MHz',fontsize=14,fontweight=200)
+                self.plot.set_ylim([-150,-0])
+                self.plot.set_xlabel("Frequency (Hz)")
+                self.plot.set_ylabel("Power (dBm)")
+                self.plot.grid(True)
+                self.fig.tight_layout()
+                
+                for i in dataReturn:
+                    freqArray.append(int(865e6+(dataiter*binsize)))
+                    dataiter+=1
+                    
+                progress.setValue(prog)    
+                self.plot.plot(freqArray,dataReturn,lw=.5,c='r')     
+    #             self.plot.scatter(freqArray,dataReturn,c=matplotlib.cm.jet(np.abs(dataReturn)), edgecolor='none',marker=',', s=0.75)    
+                self.canvas.draw()
+                
+                if progress.wasCanceled():
+                    canceled=True
+                    break
+                
+                prog+=1
+                QApplication.instance().processEvents()
+                
+            self.canvas.print_figure('temp_915MHz.png')  
             
 #=======================================================================
 # 863MHz
 #=======================================================================
-        
-        #===================================================================
-        # setup signal hound
-        #===================================================================
-        try:
-            #setup sweep coupling if maxhold is selected it will use 100ms for sweeptime
-            self.specan.sh.configureCenterSpan(863e6,100e6)
-        except:
-            print "specan setup error"  
-              
-        self.plot.cla()
-        for testNo in range(0,TEST_NO):
+        if not canceled:
+            #===================================================================
+            # setup signal hound
+            #===================================================================
             try:
-                dataReturn=self.specan.get_full_sweep()
+                #setup sweep coupling if maxhold is selected it will use 100ms for sweeptime
+                self.specan.sh.configureCenterSpan(863e6,100e6)
             except:
-                print "error getting specan sweep"
+                print "specan setup error"  
+                  
+            self.plot.cla()
+            for testNo in range(0,TEST_NO):
+                try:
+                    dataReturn=self.specan.get_full_sweep()
+                except:
+                    print "error getting specan sweep"
+                    
+                #get bin size in order to calculate frequencies
+                traceInfo=self.specan.sh.queryTraceInfo()
+                binsize=traceInfo["arr-bin-size"]
                 
-            #get bin size in order to calculate frequencies
-            traceInfo=self.specan.sh.queryTraceInfo()
-            binsize=traceInfo["arr-bin-size"]
-            
-            #calculate frequencies from trace info
-
-            dataiter=0
-            freqArray=[]
-            
-            if not reDraw:
-                self.plot.cla()
-            self.plot.set_xlim([813e6,913e6])
-            self.plot.set_title('Center: 863MHz    Span: 813MHz ~ 913MHz',fontsize=14,fontweight=200)
-            self.plot.set_ylim([-150,-0])
-            self.plot.set_xlabel("Frequency (Hz)")
-            self.plot.set_ylabel("Power (dBm)")
-            self.plot.grid(True)
-            
-            for i in dataReturn:
-                freqArray.append(int(813e6+(dataiter*binsize)))
-                dataiter+=1
+                #calculate frequencies from trace info
+    
+                dataiter=0
+                freqArray=[]
                 
-            progress.setValue(prog)    
-            self.plot.plot(freqArray,dataReturn,lw=.5, c='r')      
-#             self.plot.scatter(freqArray,dataReturn,c=matplotlib.cm.jet(np.abs(dataReturn)), edgecolor='none',marker=',', s=0.75)  
-            self.canvas.draw()
-            
-            if progress.wasCanceled():
-                canceled=True
-                break
-            
-            prog+=1
-            QApplication.instance().processEvents()
-            
-        self.canvas.print_figure('temp_863MHz.png')  
+                if not reDraw:
+                    self.plot.cla()
+                self.plot.set_xlim([813e6,913e6])
+                self.plot.set_title('Center: 863MHz    Span: 813MHz ~ 913MHz',fontsize=14,fontweight=200)
+                self.plot.set_ylim([-150,-0])
+                self.plot.set_xlabel("Frequency (Hz)")
+                self.plot.set_ylabel("Power (dBm)")
+                self.plot.grid(True)
+                self.fig.tight_layout()
+                
+                for i in dataReturn:
+                    freqArray.append(int(813e6+(dataiter*binsize)))
+                    dataiter+=1
+                    
+                progress.setValue(prog)    
+                self.plot.plot(freqArray,dataReturn,lw=.5, c='r')      
+    #             self.plot.scatter(freqArray,dataReturn,c=matplotlib.cm.jet(np.abs(dataReturn)), edgecolor='none',marker=',', s=0.75)  
+                self.canvas.draw()
+                
+                if progress.wasCanceled():
+                    canceled=True
+                    break
+                
+                prog+=1
+                QApplication.instance().processEvents()
+                
+            self.canvas.print_figure('temp_863MHz.png')  
             
 #=======================================================================
 # Wide Band
 #=======================================================================
-        
-        #===================================================================
-        # setup signal hound
-        #===================================================================
-        try:
-            self.specan.sh.configureCenterSpan(3015e6,5970e6)
-            self.specan.sh.configureSweepCoupling(300e3,300e3,0.001,"native","no-spur-reject")
-        except:
-            print "specan setup error"    
-            
-        self.plot.cla()
-        for testNo in range(0,TEST_NO):
+        if not canceled:
+            #===================================================================
+            # setup signal hound
+            #===================================================================
             try:
-                dataReturn=self.specan.get_full_sweep()
+                self.specan.sh.configureCenterSpan(3015e6,5970e6)
+                self.specan.sh.configureSweepCoupling(300e3,300e3,0.001,"native","no-spur-reject")
             except:
-                print "error getting specan sweep"
+                print "specan setup error"    
                 
-            #get bin size in order to calculate frequencies
-            traceInfo=self.specan.sh.queryTraceInfo()
-            binsize=traceInfo["arr-bin-size"]
-            
-            #calculate frequencies from trace info
-            dataiter=0
-            freqArray=[]
-            
-            if not reDraw:
-                self.plot.cla()
+            self.plot.cla()
+            for testNo in range(0,TEST_NO):
+                try:
+                    dataReturn=self.specan.get_full_sweep()
+                except:
+                    print "error getting specan sweep"
+                    
+                #get bin size in order to calculate frequencies
+                traceInfo=self.specan.sh.queryTraceInfo()
+                binsize=traceInfo["arr-bin-size"]
                 
-            self.plot.set_xlim(100e6,6000e6)
-            self.plot.set_title('Wide Band    Span: (0~6GHz)',fontsize=14,fontweight=200)
-            self.plot.set_ylim([-150,-0])
-            self.plot.set_xlabel("Frequency (Hz)")
-            self.plot.set_ylabel("Power (dBm)")
-            self.plot.grid(True)
-            
-            for i in dataReturn:
-                freqArray.append(int(30e6+(dataiter*binsize)))
-                dataiter+=1
+                #calculate frequencies from trace info
+                dataiter=0
+                freqArray=[]
                 
-            progress.setValue(prog)  
-            self.plot.plot(freqArray,dataReturn,lw=.5, c='r')      
-#             self.plot.scatter(freqArray,dataReturn,c=matplotlib.cm.jet(np.abs(dataReturn)), edgecolor='none',marker=',', s=0.75)  
-            self.canvas.draw()
+                if not reDraw:
+                    self.plot.cla()
+                    
+                self.plot.set_xlim(100e6,6000e6)
+                self.plot.set_title('Wide Band    Span: (0~6GHz)',fontsize=14,fontweight=200)
+                self.plot.set_ylim([-150,-0])
+                self.plot.set_xlabel("Frequency (Hz)")
+                self.plot.set_ylabel("Power (dBm)")
+                self.plot.grid(True)
+                self.fig.tight_layout()
+                
+                for i in dataReturn:
+                    freqArray.append(int(30e6+(dataiter*binsize)))
+                    dataiter+=1
+                    
+                progress.setValue(prog)  
+                self.plot.plot(freqArray,dataReturn,lw=.5, c='r')      
+    #             self.plot.scatter(freqArray,dataReturn,c=matplotlib.cm.jet(np.abs(dataReturn)), edgecolor='none',marker=',', s=0.75)  
+                self.canvas.draw()
+                
+                if progress.wasCanceled():
+                    canceled=True
+                    break
+                
+                prog+=1
+                QApplication.instance().processEvents()
             
-            if progress.wasCanceled():
-                canceled=True
-                break
-            
-            prog+=1
-            QApplication.instance().processEvents()
-        
-        self.canvas.print_figure('temp_WideBand.png')  
-        
+            self.canvas.print_figure('temp_WideBand.png')  
         progress.close()
         
         #=======================================================================
@@ -418,9 +424,11 @@ class Application(QMainWindow):
         
         if canceled==False:
             msg.exec_()
-            
+            self.btn_saveAs.setEnabled(True)
+        else:
+            self.btn_saveAs.setEnabled(False)  
+              
         self.runInfo.setText('Ready to run test')
-        self.btn_saveAs.setEnabled(True)
         self.btn_run.setEnabled(True)
         
     def msgbtn(self,i):
@@ -436,10 +444,10 @@ class Application(QMainWindow):
         #
         #=======================================================================
         print "Button pressed is:",i.text()
-        if i.text()== "Yes":
+        if i.text()== "&Yes":
             self.saveData()
             
-        elif i.text()== "No":
+        elif i.text()== "&No":
             pass    
         
     def saveData(self):
@@ -460,9 +468,7 @@ class Application(QMainWindow):
         QApplication.instance().processEvents()
         
         file_choices = "Excel Workbook ( *.xlsx)"
-        path = unicode(QFileDialog.getSaveFileName(self, 
-                        'Save', '', 
-                        file_choices))
+        path = unicode(QFileDialog.getSaveFileName(self, 'Save', '', file_choices))
         
         
         
@@ -508,6 +514,7 @@ class Application(QMainWindow):
         #   Description:    searches for specan and displays result in GUI
         #
         #=======================================================================
+        
         self.deviceInfo.setText("Finding spectrum analyzer...")
         self.btn_findDevice.setEnabled(False)
         QApplication.instance().processEvents()
