@@ -30,7 +30,7 @@ from SignalHound import *
 from specan import *
 from PyQt4.Qt import QTextEdit
 from advSettingDialog.advSettingDialog import advSettingsDialog
-
+import atexit
 
 
 
@@ -42,6 +42,9 @@ class Application(QMainWindow):
         self.foundSpec=False
         self.specan=SpecAnalyzer()
         self.PROG=0
+        
+        self.plotImageList=[]
+        
         self.settings=advSettingsDialog(self)
         
     def createForm(self):
@@ -124,105 +127,58 @@ class Application(QMainWindow):
         #   Description:    runs consecutive sweeps in 5 different bandwidths
         #
         #=======================================================================
+        
+        self.purgeplotImageList()
+        
         TEST_NO=20
         canceled=False
-        
-        reDraw=False    #make true if you want plot to draw on top of eachother
         
         self.btn_run.setEnabled(False)
         self.runInfo.setText('Running Test...')
         self.btn_saveAs.setEnabled(False)
         
         QApplication.instance().processEvents()
+        
         self.progress=QProgressDialog(labelText="Running Test",minimum=0,maximum=TEST_NO*5)
+        
         self.progress.setWindowTitle('Test Progress')
         self.progress.show()
-#         progress.move(10,10)
-        prog=0
+        
         self.PROG=0
         
 #=======================================================================
 #    5.5GHz
-#=======================================================================
-        
-        #===================================================================
-        # setup signal hound
-        #===================================================================
-        try:
-#             self.specan.sh.configureCenterSpan(5500e6,1000e6)
-            self.specan.sh.configureSweepCoupling(157.1e3,157.1e3,0.05,"native","no-spur-reject")
-        except:
-            print "specan setup error" 
-            
-        canceled = self.runSweep(TEST_NO, 5500e6, 1000e6, 1)
-  
+#=======================================================================   
+        canceled = self.runSweep(TEST_NO, 5500e6, 1000e6, 0,157.1e3,0.1)
         
 #=======================================================================
 #    4GHz
 #=======================================================================
-        if not canceled:
-            #===================================================================
-            # setup signal hound
-            #===================================================================
-            try:
-                self.specan.sh.configureCenterSpan(4000e6,1000e6)
-            except:
-                print "specan setup error"    
+        if not canceled: 
+            canceled = self.runSweep(TEST_NO, 4000e6, 1000e6, 1, 157.1e3, 0.1)    
             
-            canceled = self.runSweep(TEST_NO, 4000e6, 1000e6, 2)    
- 
-        
 #=======================================================================
 # 915MHz 
 #=======================================================================
         if not canceled:
-            #===================================================================
-            # setup signal hound
-            #===================================================================
-            try:
-#                 self.specan.sh.configureCenterSpan(915e6,100e6)
-                self.specan.sh.configureSweepCoupling(39.45e3,39.45e3,0.05,"native","no-spur-reject")
-            except:
-                print "specan setup error"  
-                
-            canceled = self.runSweep(TEST_NO, 915e6, 100e6, 3)    
+            canceled = self.runSweep(TEST_NO, 915e6, 100e6, 2,39.45e3,0.1)    
 
-            
 #=======================================================================
 # 863MHz
 #=======================================================================
-        if not canceled:
-            #===================================================================
-            # setup signal hound
-            #===================================================================
-            try:
-                #setup sweep coupling if maxhold is selected it will use 100ms for sweeptime
-                self.specan.sh.configureCenterSpan(863e6,100e6)
-            except:
-                print "specan setup error"  
-             
-            canceled = self.runSweep(TEST_NO, 863e6, 100e6, 4)
+        if not canceled: 
+            canceled = self.runSweep(TEST_NO, 863e6, 100e6, 3, 39.45e3, 0.1)
                   
-            
 #=======================================================================
 # Wide Band
 #=======================================================================
         if not canceled:
-            #===================================================================
-            # setup signal hound
-            #===================================================================
-            try:
-                self.specan.sh.configureSweepCoupling(315.6e3,315.6e3,0.001,"native","no-spur-reject")
-            except:
-                print "specan setup error"    
+            canceled = self.runSweep(TEST_NO, 3015e6, 5970e6, 4, 315.6e3, 0.1)
                 
-            canceled = self.runSweep(TEST_NO, 3015e6, 5970e6, 5)
-                
-        self.progress.close()
-        
         #=======================================================================
         # Test Complete
         #=======================================================================
+        self.progress.close()
         
         msg = QMessageBox()
         msg.setWindowTitle('Test Complete')
@@ -287,21 +243,12 @@ class Application(QMainWindow):
             wb = pyxl.Workbook()
             ws = wb.create_sheet("Race Site SPectrum Test", 0)
             
-            img = Image('temp_5_5GHz.png')
-            ws.add_image(img, 'A1')
-            
-            img = Image('temp_4GHz.png')
-            ws.add_image(img, 'A25')
-            
-            img = Image('temp_915MHz.png')
-            ws.add_image(img, 'A50')
-            
-            img = Image('temp_863MHz.png')
-            ws.add_image(img, 'A75')
-            
-            img = Image('temp_WideBand.png')
-            ws.add_image(img, 'A100')
-            
+            i = 0
+            for pltImg in self.plotImageList:
+                
+                img = Image(pltImg)
+                ws.add_image(img, 'A'+str(i*25+1))
+                i+=1
             
         try:
             wb.save(path)
@@ -312,9 +259,21 @@ class Application(QMainWindow):
         self.btn_saveAs.setEnabled(True)
         self.btn_run.setEnabled(True)
 
-    def runSweep(self,reps,freqCenter,freqSpan,testNum):
+    def runSweep(self,reps,freqCenter,freqSpan,testNum,rbw,sweepTime):
+#=======================================================================
+#
+#          Name:    runSweep    
+#
+#    Parameters:    reps
+#
+#        Return:    True if test is canceled else False
+#
+#   Description:    
+#
+#=======================================================================
         try:
-            #setup sweep coupling if maxhold is selected it will use 100ms for sweeptime
+            self.specan.sh.configureSweepCoupling(rbw,rbw,sweepTime,"native","no-spur-reject")
+            
             self.specan.sh.configureCenterSpan(freqCenter,freqSpan)
         except:
             print "specan setup error"  
@@ -340,7 +299,8 @@ class Application(QMainWindow):
 
             self.plot.cla()
             self.plot.set_xlim([startFreq,endFreq])
-            self.plot.set_title('Center: ' + str(freqCenter) + 'Hz    Span: ' + str(startFreq) + 'Hz ~ ' + str(endFreq) + 'Hz',fontsize=14,fontweight=200)
+#             self.plot.set_title('Center: ' + str(freqCenter/1e6) + 'MHz    Span: ' + str(startFreq/1e6) + 'MHz ~ ' + str(endFreq/1e6) + 'MHz',fontsize=14,fontweight=200)
+            self.plot.set_title('Center: ' + str(freqCenter/1e6) + 'MHz    Span: ' + str(startFreq/1e6) + 'MHz ~ ' + str(endFreq/1e6) + 'MHz    RBW: '+str((rbw/1000))+'KHz    SweepTime: '+str((sweepTime*1000))+'ms')
             self.plot.set_ylim([-150,-0])
             self.plot.set_xlabel("Frequency (Hz)")
             self.plot.set_ylabel("Power (dBm)")
@@ -364,12 +324,24 @@ class Application(QMainWindow):
                 self.PROG+=1
                 QApplication.instance().processEvents()
                 
-           
-        self.canvas.print_figure('temp_' + str(testNum) + '.png')  
+        plotImgName = 'temp_' + str(testNum) + '.png' 
+        self.plotImageList.append(plotImgName)
+        
+        self.canvas.print_figure(plotImgName)  
+        
         return False 
     
     def click_advSettings(self):
         self.settings.exec_()
+        
+    def purgeplotImageList(self):
+        for filename in self.plotImageList:
+            if os.path.exists(filename):
+                os.remove(filename)
+            else:
+                print("Sorry, I can not remove %s file." % filename)
+        
+        self.plotImageList=[]
         
     def click_find(self):
         #=======================================================================
@@ -429,6 +401,9 @@ class Application(QMainWindow):
         msg.setStandardButtons(QMessageBox.Ok)
         msg.exec_()
     
+def atexit(app):
+    app.purgeplotImageList()
+        
     
 def main():
     app = QApplication(sys.argv)  
@@ -437,6 +412,11 @@ def main():
     form.show()
     #form.resize(400,600)
     app.exec_()
+    
+    atexit(form)
+    sys.exit()
+    
+    
 
 
 if __name__ == '__main__':
