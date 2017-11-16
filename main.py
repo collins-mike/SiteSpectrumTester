@@ -31,6 +31,7 @@ from specan import *
 from PyQt4.Qt import QTextEdit
 from advSettingDialog.advSettingDialog import advSettingsDialog
 import atexit
+from SpecTest import SpecTest
 
 
 
@@ -114,6 +115,13 @@ class Application(QMainWindow):
         vbox.addLayout(hbox)
         self.setCentralWidget(self.main_frame)
         
+        #=======================================================================
+        # create standard tests
+        #=======================================================================
+        self.testList=[]
+        test=SpecTest(parent=self, plot=self.plot, testNum=0, name="5.5GHz",rbw=100e3,sweepTime=0.1,sweepNum=20,freqCenter=5500e6,freqSpan=1e9,threshold=-50)
+        self.testList.append(test)
+        
         
     def click_Run(self):
         #=======================================================================
@@ -149,8 +157,8 @@ class Application(QMainWindow):
 #=======================================================================
 #    5.5GHz
 #=======================================================================   
-        canceled = self.runSweep(TEST_NO, 5500e6, 1000e6, 0,157.1e3,0.1,-50)
-        
+        #canceled = self.runSweep(TEST_NO, 5500e6, 1000e6, 0,157.1e3,0.1,-50)
+        self.testList[0].runSweep()
 #=======================================================================
 #    4GHz
 #=======================================================================
@@ -216,7 +224,10 @@ class Application(QMainWindow):
             
         elif i.text()== "&No":
             pass    
-        
+    
+    def updateUi(self):
+            QApplication.instance().processEvents()
+    
     def saveData(self):
         #=======================================================================
         #
@@ -232,7 +243,7 @@ class Application(QMainWindow):
         
         self.btn_saveAs.setEnabled(False)
         self.btn_run.setEnabled(False)
-        QApplication.instance().processEvents()
+        self.updateUi()
         
         file_choices = "Excel Workbook ( *.xlsx)"
         path = unicode(QFileDialog.getSaveFileName(self, 'Save', '', file_choices))
