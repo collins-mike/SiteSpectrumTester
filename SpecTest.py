@@ -27,7 +27,6 @@ class SpecTest(object):
         self.freqCenter=freqCenter
         self.freqSpan=freqSpan
         self.threshold=threshold
-        self.PROG=0
         
     
     def runSweep(self):
@@ -49,6 +48,8 @@ class SpecTest(object):
             peak.append(-9999)
             peakFreq.append(0)
         
+        
+        
         try:
             self.parent.specan.sh.configureSweepCoupling(self.rbw,self.rbw,self.sweepTime,"native","no-spur-reject")
             
@@ -58,9 +59,10 @@ class SpecTest(object):
               
         self.plot.cla()
         for testNo in range(0,self.sweepNum):
-#             try:
+            try:
                 dataReturn=self.parent.specan.get_full_sweep()
-            
+                
+                self.parent.progress.setLabel(QLabel("\n Running Test: "+self.name+"    (Sweep "+str(testNo)+"/"+str(self.sweepNum)+")"))
                 
                 #get bin size in order to calculate frequencies
                 traceInfo=self.parent.specan.sh.queryTraceInfo()
@@ -79,7 +81,7 @@ class SpecTest(object):
                 self.plot.cla()
                 self.plot.set_xlim([startFreq,endFreq])
     #             self.plot.set_title('Center: ' + str(freqCenter/1e6) + 'MHz    Span: ' + str(startFreq/1e6) + 'MHz ~ ' + str(endFreq/1e6) + 'MHz',fontsize=14,fontweight=200)
-                self.plot.set_title('Center: ' + str(self.freqCenter/1e6) + 'MHz    Span: ' + str(startFreq/1e6) + 'MHz ~ ' + str(endFreq/1e6) + 'MHz    RBW: '+str((self.rbw/1000))+'KHz    SweepTime: '+str((self.sweepTime*1000))+'ms')
+                self.plot.set_title(str(self.name)+'\nCenter: ' + str(self.freqCenter/1e6) + 'MHz    Span: ' + str(startFreq/1e6) + 'MHz ~ ' + str(endFreq/1e6) + 'MHz    RBW: '+str((self.rbw/1000))+'KHz    SweepTime: '+str((self.sweepTime*1000))+'ms')
                 self.plot.set_ylim([-150,-0])
                 self.plot.set_xlabel("Frequency (Hz)")
                 self.plot.set_ylabel("Power (dBm)")
@@ -113,7 +115,7 @@ class SpecTest(object):
                 
                 
                  
-                self.parent.progress.setValue(self.PROG)    
+                self.parent.progress.setValue(self.parent.PROG)    
                 self.plot.plot(freqArray,dataReturn,lw=.5, c='r')      
                 self.plot.plot(freqArray,limitArray,lw=1, c='b') 
                 
@@ -125,11 +127,11 @@ class SpecTest(object):
                     return True
                     break
                 
-                self.PROG+=1
+                self.parent.PROG+=1
                 self.parent.updateUi()
-#             except:
-#                 print "error getting specan sweep"
-        
+            except:
+                print "error getting specan sweep"
+                self.parent.PROG+=1
         #Save plot to temp file        
         plotImgName = 'temp_' + str(self.testNum) + '.png' 
         self.parent.plotImageList.append(plotImgName)

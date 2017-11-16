@@ -119,9 +119,12 @@ class Application(QMainWindow):
         # create standard tests
         #=======================================================================
         self.testList=[]
-        test=SpecTest(parent=self, plot=self.plot, testNum=0, name="5.5GHz",rbw=100e3,sweepTime=0.1,sweepNum=20,freqCenter=5500e6,freqSpan=1e9,threshold=-50)
-        self.testList.append(test)
-        
+        self.testList.append(SpecTest(parent=self, plot=self.plot, testNum=0, name="5.5 GHz",rbw=157.1e3,sweepTime=0.01,sweepNum=20,freqCenter=5500e6,freqSpan=1e9,threshold=-50))
+        self.testList.append(SpecTest(parent=self, plot=self.plot, testNum=1, name="4 GHz",rbw=157.1e3,sweepTime=0.01,sweepNum=20,freqCenter=4000e6,freqSpan=1e9,threshold=-50))
+        self.testList.append(SpecTest(parent=self, plot=self.plot, testNum=2, name="915 MHz",rbw=39.45e3,sweepTime=0.01,sweepNum=20,freqCenter=915e6,freqSpan=100e6,threshold=-50))
+        self.testList.append(SpecTest(parent=self, plot=self.plot, testNum=3, name="863 MHz",rbw=39.45e3,sweepTime=0.01,sweepNum=20,freqCenter=863e6,freqSpan=100e6,threshold=-50))
+        self.testList.append(SpecTest(parent=self, plot=self.plot, testNum=4, name="Wide Band",rbw=315.6e3,sweepTime=0.01,sweepNum=20,freqCenter=3015e6,freqSpan=5970e6,threshold=-50))
+             
         
     def click_Run(self):
         #=======================================================================
@@ -138,51 +141,28 @@ class Application(QMainWindow):
         
         self.purgeplotImageList()
         
-        TEST_NO=20
         canceled=False
         
         self.btn_run.setEnabled(False)
         self.runInfo.setText('Running Test...')
         self.btn_saveAs.setEnabled(False)
         
-        QApplication.instance().processEvents()
+        self.updateUi()
         
-        self.progress=QProgressDialog(labelText="Running Test",minimum=0,maximum=TEST_NO*5)
+        totalSweeps=0
+        for i in range(len(self.testList)):
+            totalSweeps+=self.testList[i].sweepNum
         
+        self.progress=QProgressDialog(labelText="Running Test",minimum=0,maximum=totalSweeps)
+        PROG=0
         self.progress.setWindowTitle('Test Progress')
         self.progress.show()
-        
-        self.PROG=0
-        
-#=======================================================================
-#    5.5GHz
-#=======================================================================   
-        #canceled = self.runSweep(TEST_NO, 5500e6, 1000e6, 0,157.1e3,0.1,-50)
-        self.testList[0].runSweep()
-#=======================================================================
-#    4GHz
-#=======================================================================
-        if not canceled: 
-            canceled = self.runSweep(TEST_NO, 4000e6, 1000e6, 1, 157.1e3, 0.1,-50)    
-            
-#=======================================================================
-# 915MHz 
-#=======================================================================
-        if not canceled:
-            canceled = self.runSweep(TEST_NO, 915e6, 100e6, 2,39.45e3,0.1,-50)    
 
-#=======================================================================
-# 863MHz
-#=======================================================================
-        if not canceled: 
-            canceled = self.runSweep(TEST_NO, 863e6, 100e6, 3, 39.45e3, 0.1,-50)
-                  
-#=======================================================================
-# Wide Band
-#=======================================================================
-        if not canceled:
-            canceled = self.runSweep(TEST_NO, 3015e6, 5970e6, 4, 315.6e3, 0.1,-50)
-                
+        for i in range(len(self.testList)):
+            canceled=self.testList[i].runSweep()
+            if canceled:
+                break
+            
         #=======================================================================
         # Test Complete
         #=======================================================================
@@ -205,6 +185,7 @@ class Application(QMainWindow):
               
         self.runInfo.setText('Ready to run test')
         self.btn_run.setEnabled(True)
+        self.PROG=0
         
     def msgbtn(self,i):
         #=======================================================================
@@ -270,115 +251,11 @@ class Application(QMainWindow):
         self.btn_saveAs.setEnabled(True)
         self.btn_run.setEnabled(True)
 
-    def runSweep(self, reps, freqCenter, freqSpan, testNum, rbw, sweepTime, limit):
-#=======================================================================
-#
-#          Name:    runSweep    
-#
-#    Parameters:    reps
-#
-#        Return:    True if test is canceled else False
-#
-#   Description:    
-#
-#=======================================================================
-        peak=[]
-        peakFreq=[]
-        
-        for i in range(3):
-            peak.append(-9999)
-            peakFreq.append(0)
-        
-        try:
-            self.specan.sh.configureSweepCoupling(rbw,rbw,sweepTime,"native","no-spur-reject")
-            
-            self.specan.sh.configureCenterSpan(freqCenter,freqSpan)
-        except:
-            print "specan setup error"  
-              
-        self.plot.cla()
-        for testNo in range(0,reps):
-#             try:
-                dataReturn=self.specan.get_full_sweep()
-            
-                
-                #get bin size in order to calculate frequencies
-                traceInfo=self.specan.sh.queryTraceInfo()
-                binsize=traceInfo["arr-bin-size"]
-                
-                #calculate frequencies from trace info
-    
-                dataiter=0
-                freqArray=[]
-                limitArray=[]
-                average=0
-                
-                startFreq=(freqCenter-freqSpan/2)
-                endFreq=(freqCenter+freqSpan/2)
-    
-                self.plot.cla()
-                self.plot.set_xlim([startFreq,endFreq])
-    #             self.plot.set_title('Center: ' + str(freqCenter/1e6) + 'MHz    Span: ' + str(startFreq/1e6) + 'MHz ~ ' + str(endFreq/1e6) + 'MHz',fontsize=14,fontweight=200)
-                self.plot.set_title('Center: ' + str(freqCenter/1e6) + 'MHz    Span: ' + str(startFreq/1e6) + 'MHz ~ ' + str(endFreq/1e6) + 'MHz    RBW: '+str((rbw/1000))+'KHz    SweepTime: '+str((sweepTime*1000))+'ms')
-                self.plot.set_ylim([-150,-0])
-                self.plot.set_xlabel("Frequency (Hz)")
-                self.plot.set_ylabel("Power (dBm)")
-                self.plot.grid(True)
-                self.fig.tight_layout()
-                
-                for i in dataReturn:
-                    frequency=int(startFreq+(dataiter*binsize))
-                    freqArray.append(frequency)
-                    dataLen=len(dataReturn)
-                    
-                    
-                    average=(((average*dataiter)+abs(i))/(dataiter+1))
-                    
-                    limitArray.append(limit)
-                    
-                    if i>peak[0]:
-                        peak[0]=i
-                        peakFreq[0]=frequency
-                        
-                    if i>peak[1] and (peakFreq[1]<(peakFreq[0]-5000) or peakFreq[1]>(peakFreq[0]+5000)):
-                        peak[1]=i
-                        peakFreq[1]=frequency
-                        
-                        
-#                     if i>peak[2] and peakFreq[2]<(peakFreq[0]+(dataLen/10)):
-#                         peak[1]=i
-#                         peakFreq[1]=frequency
-                                
-                    dataiter+=1
-                
-                
-                 
-                self.progress.setValue(self.PROG)    
-                self.plot.plot(freqArray,dataReturn,lw=.5, c='r')      
-                self.plot.plot(freqArray,limitArray,lw=1, c='b') 
-                
-                self.plot.scatter(peakFreq,peak,marker='d',color='black',s=100)
-    
-                self.canvas.draw()
-                
-                if self.progress.wasCanceled():
-                    return True
-                    break
-                
-                self.PROG+=1
-                QApplication.instance().processEvents()
-#             except:
-#                 print "error getting specan sweep"
-        
-        #Save plot to temp file        
-        plotImgName = 'temp_' + str(testNum) + '.png' 
-        self.plotImageList.append(plotImgName)
-        
-        self.canvas.print_figure(plotImgName)  
-        
-        return False 
     
     def click_advSettings(self):
+        self.settings.disableTableModification=True
+        self.settings.updateTable()
+        self.settings.disableTableModification=False
         self.settings.exec_()
         
     def purgeplotImageList(self):
@@ -405,7 +282,7 @@ class Application(QMainWindow):
         
         self.deviceInfo.setText("Finding spectrum analyzer...")
         self.btn_findDevice.setEnabled(False)
-        QApplication.instance().processEvents()
+        self.updateUi()
         try:
             self.foundSpec=self.specan.find_device()
             
