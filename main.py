@@ -71,6 +71,8 @@ class Application(QMainWindow):
         self.main_frame.setLayout(vbox)
         
         self.btn_findDevice=QPushButton("Find Spectrum Analyzer")
+        self.btn_findDevice.setFixedHeight(50)
+        self.btn_findDevice.setFixedWidth(150)
         self.btn_findDevice.setEnabled(True)
         self.connect(self.btn_findDevice, SIGNAL('clicked()'), self.click_find)
         self.deviceInfo=QLineEdit("No spectrum analyzer found")
@@ -78,6 +80,8 @@ class Application(QMainWindow):
         fbox.addRow(self.btn_findDevice,self.deviceInfo)
     
         self.btn_run=QPushButton("Run")
+        self.btn_run.setFixedHeight(50)
+        self.btn_run.setFixedWidth(150)
         self.btn_run.setEnabled(False)
         self.connect(self.btn_run, SIGNAL('clicked()'), self.click_Run)
         self.runInfo=QLineEdit("Find Spectrum analyzer before running test")
@@ -85,6 +89,8 @@ class Application(QMainWindow):
         fbox.addRow(self.btn_run,self.runInfo)
         
         self.btn_saveAs=QPushButton("Save As")
+        self.btn_saveAs.setFixedHeight(50)
+        self.btn_saveAs.setFixedWidth(150)
         self.btn_saveAs.setEnabled(False)
         self.connect(self.btn_saveAs, SIGNAL('clicked()'), self.saveData)
         self.saveInfo=QLineEdit('No Data to Save')
@@ -93,6 +99,8 @@ class Application(QMainWindow):
         
         
         self.btn_advSettings=QPushButton("Advanced Settings")
+        self.btn_advSettings.setFixedHeight(50)
+        self.btn_advSettings.setFixedWidth(150)
         self.btn_advSettings.setEnabled(True)
         self.connect(self.btn_advSettings, SIGNAL('clicked()'), self.click_advSettings)
         hbox=QHBoxLayout()
@@ -118,13 +126,15 @@ class Application(QMainWindow):
         #=======================================================================
         # create standard tests
         #=======================================================================
+        self.buildDefaultTests()
+
+    def buildDefaultTests(self):
         self.testList=[]
         self.testList.append(SpecTest(parent=self, plot=self.plot, testNum=0, name="5.5 GHz",rbw=157.1e3,sweepTime=0.01,sweepNum=20,freqCenter=5500e6,freqSpan=1e9,threshold=-50))
         self.testList.append(SpecTest(parent=self, plot=self.plot, testNum=1, name="4 GHz",rbw=157.1e3,sweepTime=0.01,sweepNum=20,freqCenter=4000e6,freqSpan=1e9,threshold=-50))
         self.testList.append(SpecTest(parent=self, plot=self.plot, testNum=2, name="915 MHz",rbw=39.45e3,sweepTime=0.01,sweepNum=20,freqCenter=915e6,freqSpan=100e6,threshold=-50))
         self.testList.append(SpecTest(parent=self, plot=self.plot, testNum=3, name="863 MHz",rbw=39.45e3,sweepTime=0.01,sweepNum=20,freqCenter=863e6,freqSpan=100e6,threshold=-50))
-        self.testList.append(SpecTest(parent=self, plot=self.plot, testNum=4, name="Wide Band",rbw=315.6e3,sweepTime=0.01,sweepNum=20,freqCenter=3015e6,freqSpan=5970e6,threshold=-50))
-             
+        self.testList.append(SpecTest(parent=self, plot=self.plot, testNum=4, name="Wide Band",rbw=315.6e3,sweepTime=0.001,sweepNum=20,freqCenter=3015e6,freqSpan=5970e6,threshold=-50))
         
     def click_Run(self):
         #=======================================================================
@@ -233,7 +243,7 @@ class Application(QMainWindow):
         
         if path:
             wb = pyxl.Workbook()
-            ws = wb.create_sheet("Race Site SPectrum Test", 0)
+            ws = wb.create_sheet("Race Site Spectrum Test", 0)
             
             i = 0
             for pltImg in self.plotImageList:
