@@ -65,7 +65,7 @@ class advSettingsDialog(QDialog):
         self.table=QTableWidget()
         
         self.table.setColumnCount(9)
-        self.table.setHorizontalHeaderLabels(QString("Name;Center Frequency(MHz);Frequency Span(MHz);Start Freq(MHz);End Freq(MHz);RBW(kHz);Sweep Time(ms);Sweep Count;Threshold(dBm)").split(";"))
+        self.table.setHorizontalHeaderLabels(QString("Name;Center Frequency(MHz);Frequency Span(MHz);Start Freq(MHz);End Freq(MHz);RBW(MHz);Sweep Time(ms);Sweep Count;Threshold(dBm)").split(";"))
         self.table.setRowCount(0)
         header = self.table.horizontalHeader()
         header.setResizeMode(QHeaderView.ResizeToContents)
@@ -151,7 +151,7 @@ class advSettingsDialog(QDialog):
                 self.parent.testList[i].name=str(ws['A'+str(i+1)].value)
                 self.parent.testList[i].freqCenter=int(float(ws['B'+str(i+1)].value))*1e6
                 self.parent.testList[i].freqSpan=int(float(ws['C'+str(i+1)].value))*1e6
-                self.parent.testList[i].rbw=int(float(ws['F'+str(i+1)].value))*1e3
+                self.parent.testList[i].rbw=float(ws['F'+str(i+1)].value)*1e6
                 self.parent.testList[i].sweepTime=float(ws['G'+str(i+1)].value)/1e3
                 self.parent.testList[i].sweepNum=int(float(ws['H'+str(i+1)].value))
                 self.parent.testList[i].threshold=int(float(ws['I'+str(i+1)].value))
@@ -200,7 +200,7 @@ class advSettingsDialog(QDialog):
                 center=self.parent.testList[i]
                 self.parent.testList[i].freqSpan=int(float(self.table.item(i,2).text()))*1e6
                 span=self.parent.testList[i]
-                self.parent.testList[i].rbw=int(float(self.table.item(i,5).text()))*1e3
+                self.parent.testList[i].rbw=float(self.table.item(i,5).text())*1e6
                 self.parent.testList[i].sweepTime=float(self.table.item(i,6).text())/1e3
                 self.parent.testList[i].sweepNum=int(float(self.table.item(i,7).text()))
                 self.parent.testList[i].threshold=int(float(self.table.item(i,8).text()))
@@ -233,7 +233,7 @@ class advSettingsDialog(QDialog):
                 self.table.setItem(i,4,item)
                 
                 
-                self.table.setItem(i,5,QTableWidgetItem(str(self.parent.testList[i].rbw/1e3)))
+                self.table.setItem(i,5,QTableWidgetItem(str(self.parent.testList[i].rbw/1e6)))
                 self.table.setItem(i,6,QTableWidgetItem(str(self.parent.testList[i].sweepTime*1e3)))
                 self.table.setItem(i,7,QTableWidgetItem(str(self.parent.testList[i].sweepNum)))
                 self.table.setItem(i,8,QTableWidgetItem(str(self.parent.testList[i].threshold)))
