@@ -24,6 +24,12 @@ from openpyxl.styles import NamedStyle, Font, PatternFill, Border, Side
 from openpyxl.styles.alignment import Alignment
 from openpyxl.drawing.image import Image
 from openpyxl import load_workbook
+from openpyxl.chart import (
+    LineChart,
+    Reference,
+    Series,
+)
+from openpyxl.chart.layout import Layout, ManualLayout
 
 #import files
 from SignalHound import *
@@ -115,7 +121,13 @@ class Application(QMainWindow):
         self.canvas = FigureCanvas(self.fig)
         
         self.canvas.setParent(self.main_frame)
+#         self.fig.set_facecolor("black")
+#         self.fig.set_edgecolor("white")
+        
         self.plot = self.fig.add_subplot(111)
+#         self.plot.set_facecolor("#212121")
+        self.plot.grid(which='minor', linestyle=':', linewidth='0.5', color='grey',zorder=0)
+        self.plot.grid(which='major', linestyle='-', linewidth='0.7', color='#606060',zorder=0)
         self.plot.set_title('---',fontsize=14,fontweight=200)       
         self.plot.set_ylim([-100,-50])
         
@@ -164,7 +176,7 @@ class Application(QMainWindow):
             totalSweeps+=self.testList[i].sweepNum
         
         self.progress=QProgressDialog(labelText="Running Test",minimum=0,maximum=totalSweeps)
-        PROG=0
+        self.PROG=0
         self.progress.setWindowTitle('Test Progress')
         self.progress.show()
 
@@ -191,7 +203,7 @@ class Application(QMainWindow):
             self.saveInfo.setText('Ready to save data from last test')
         else:
             self.btn_saveAs.setEnabled(False)  
-            self.saveInfo.setText('Test canceled, No Data to test')
+            self.saveInfo.setText('Test canceled, No data to save')
               
         self.runInfo.setText('Ready to run test')
         self.btn_run.setEnabled(True)
@@ -234,6 +246,8 @@ class Application(QMainWindow):
         
         self.btn_saveAs.setEnabled(False)
         self.btn_run.setEnabled(False)
+        self.saveInfo.setText("Saving Data(this may take a few minutes)...")
+        self.btn_advSettings.setEnabled(False)
         self.updateUi()
         
         file_choices = "Excel Workbook ( *.xlsx)"
@@ -251,6 +265,38 @@ class Application(QMainWindow):
                 img = Image(pltImg)
                 ws.add_image(img, 'A'+str(i*25+1))
                 i+=1
+            i=1
+            for test in self.testList:
+                ws = wb.create_sheet(str(self.testList[i-1].name),i)
+                j=2
+                ws['A1']="Frequency(MHz)"
+                ws['B1']="Power(dBm)"
+                for data in test.freqArray:
+                    ws['A'+str(j)]=format(data/1e6,'.2f')
+                    ws['B'+str(j)]=test.datahold[j-2]
+                    j+=1
+                    
+                x = Reference(ws, min_col=1, min_row=2, max_row=len(test.freqArray))
+                y = Reference(ws, min_col=2, min_row=2, max_row=len(test.freqArray))
+                 
+                 
+                c1 = LineChart()
+                 
+                c1.title = str(test.name)
+                c1.style = 1
+                c1.y_axis.title = 'Power(dBm)'
+                c1.x_axis.title = 'Frequency(MHz)'
+                c1.add_data(y)
+                c1.set_categories(x)
+                s0 = c1.series[0]
+                s0.graphicalProperties.line.solidFill = "0055FF"
+#                 s0.graphicalProperties.line.dashStyle = "sysDot"
+                s0.graphicalProperties.line.width = 100 # width in EMUs
+                
+                c1.x_axis.tickLblPos = "low"
+                ws.add_chart(c1, "c1")
+                
+                i+=1
             
         try:
             wb.save(path)
@@ -260,6 +306,7 @@ class Application(QMainWindow):
                   
         self.btn_saveAs.setEnabled(True)
         self.btn_run.setEnabled(True)
+        self.btn_advSettings.setEnabled(True)
 
     
     def click_advSettings(self):

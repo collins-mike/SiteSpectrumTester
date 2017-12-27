@@ -6,10 +6,10 @@ Created on Nov 16, 2017
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 import numpy
-import peakutils
-from peakutils.plot import plot as pplot
+# import peakutils
+# from peakutils.plot import plot as pplot
 from matplotlib import pyplot
-
+from detect_peaks import detect_peaks
 
 class SpecTest(object):
     '''
@@ -32,6 +32,9 @@ class SpecTest(object):
         self.freqCenter=freqCenter
         self.freqSpan=freqSpan
         self.threshold=threshold
+        self.dataReturn=[]
+        self.datahold=[]
+        self.freqArray=[]
         
     
     def runSweep(self):
@@ -48,17 +51,9 @@ class SpecTest(object):
 #=======================================================================
         peak=[]
         peakFreq=[]
-        top=-999999
-        topFr=0
-        
-        higherThanThreshold=False
-        
-        for i in range(3):
-            peak.append(-9999)
-            peakFreq.append(0)
-        
-        
-        
+#         self.dataReturn[:]=[]
+        self.datahold[:]=[]
+
         try:
             self.parent.specan.sh.configureSweepCoupling(self.rbw,self.rbw,self.sweepTime,"native","no-spur-reject")
             
@@ -69,7 +64,7 @@ class SpecTest(object):
         self.plot.cla()
         for testNo in range(0,self.sweepNum):
             try:
-                dataReturn=self.parent.specan.get_full_sweep()
+                self.dataReturn=self.parent.specan.get_full_sweep()
             except:
                 print "error getting specan sweep"
             self.parent.progress.setLabel(QLabel("\n Running Test: "+self.name+"    (Sweep "+str(testNo)+"/"+str(self.sweepNum)+")"))
@@ -81,8 +76,10 @@ class SpecTest(object):
             #calculate frequencies from trace info
 
             dataiter=0
-            freqArray=[]
+            self.freqArray=[]
             limitArray=[]
+            peak[:]=[]
+            peakFreq[:]=[]
             avArray=[]
             average=0
             
@@ -96,11 +93,19 @@ class SpecTest(object):
             self.plot.set_xlabel("Frequency (MHz)")
             self.plot.set_ylabel("Power (dBm)")
             self.plot.grid(True)
-            
-            for i in dataReturn:
+            self.plot.minorticks_on()
+#             self.plot.set_facecolor("#white")
+            self.plot.grid(which='minor', linestyle=':', linewidth='0.5', color='grey',zorder=0)
+            self.plot.grid(which='major', linestyle='-', linewidth='0.7', color='#606060',zorder=0)
+        
+            for i in self.dataReturn:
                 frequency=int(startFreq+(dataiter*binsize))
-                freqArray.append(frequency)
-                dataLen=len(dataReturn)
+                self.freqArray.append(frequency)
+                dataLen=len(self.dataReturn)
+                if dataiter+1>len(self.datahold):
+                    self.datahold.append(i)
+                elif i>self.datahold[dataiter]:
+                    self.datahold[dataiter]=i;
                 
                 #===============================================================
                 # average
@@ -110,38 +115,7 @@ class SpecTest(object):
                 limitArray.append(self.threshold)
                 avArray.append(average)
                 
-                #===============================================================
-                # Peaks
-                #===============================================================
 
-#                 if i>self.threshold:
-#                     if higherThanThreshold==False:
-#                         
-#                         higherThanThreshold=True 
-#                         if len(peak)<10:
-#                             peakFreq.append(frequency)
-#                             peak.append(i)
-#                             
-#                     if peak[len(peak)-1]<i:
-#                         peak[len(peak)-1]=i
-#                 else:
-#                     if higherThanThreshold==True:
-#                         if len(peak)<10:
-#                             first=peakFreq.pop()
-#                             last=frequency
-#                             
-#                             peakFreq.append(first+((last-first))/2)
-#                         
-#                         higherThanThreshold=False
-                
-#--------------------------------------------------
-                if i>top:
-                    top=i
-                    topFr=frequency
-#------------------------------------------------
-                
-                    
-                
                 dataiter+=1
                 
             
@@ -149,24 +123,33 @@ class SpecTest(object):
             # plot progress
             #===================================================================
             
-            indexes = peakutils.indexes(dataReturn, thres=-70, min_dist=1000)
-            print(indexes)
-            print int(freqArray[indexes])
-            print int(dataReturn[indexes])
+            indexes = detect_peaks(self.datahold, mph=self.threshold-2, mpd=round(dataLen/15), threshold=0, edge='rising')
+            for i in indexes:
+                print 1
+                peakFreq.append(self.freqArray[i])
+                peak.append(self.datahold[i])
             
             
             self.parent.progress.setValue(self.parent.PROG)    
-            self.plot.plot(freqArray,dataReturn,lw=.5, c='r')      
-            self.plot.plot(freqArray,limitArray,lw=1, c='b') 
-            self.plot.plot(freqArray,avArray,lw=1, c='#0f0f0f') 
-            self.plot.scatter(peakFreq,peak,marker='d',color='black',s=10)
-
-#             for i, txt in enumerate(peakFreq):
-#                 self.plot.annotate(str((int(txt/1e6)))+"MHz", (peakFreq[i],peak[i]), fontsize=9)
-#------------------------------------------------------------------------------------------------- 
-            self.plot.annotate(str((int(topFr/1e6)))+"MHz", (topFr,top+2), fontsize=9)
-            self.plot.scatter(topFr,top,marker='d',color='black',s=20)
-#-------------------------------------------------------------------------------------------------
+#             self.plot.plot(freqArray,self.dataReturn,lw=.5, c='#78dee8',zorder=2,label="Field Strength")      
+#             self.plot.plot(freqArray,limitArray,lw=1, c='#e87878',zorder=1,label="Limit Threshold") 
+            self.plot.plot(self.freqArray,self.datahold,lw=.5, c='b',zorder=2,label="Power (dBm)")      
+            self.plot.plot(self.freqArray,limitArray,lw=1.5, c='r',zorder=1,label="Limit Threshold ("+str(self.threshold)+"dBm)") 
+            
+#             self.plot.plot(self.freqArray,avArray,lw=1, c='#0f0f0f') 
+#             self.plot.scatter(peakFreq,peak,marker='d',color='#85d37c',s=20,zorder=3,label="Peaks")
+            self.plot.scatter(peakFreq,peak,marker='d',color='black',s=20,zorder=3,label="Peaks (MHz)")
+            i=0
+            for p in peakFreq:
+#                 self.plot.annotate(str((int(p/1e6)))+"MHz", (p-100,peak[i]+5), fontsize=9, horizontalalignment='center', color="#85d37c")
+                self.plot.annotate(str((int(p/1e6)))+"MHz\n"+str(format(peak[i],'.2f'))+"(dBm)", (p-100,peak[i]+5), fontsize=7, weight="bold", horizontalalignment='center', color="black")
+                
+                i+=1
+            leg=self.plot.legend(bbox_to_anchor=(1, 0.2), loc=1, borderaxespad=0.)
+            frm=leg.get_frame()
+#             frm.set_facecolor("black")
+#             frm.set_edgecolor("white")
+            
             self.plot.set_title(str(self.name)+'\nCenter: ' + str(self.freqCenter/1e6) + 'MHz    Span: ' + str(startFreq/1e6) + 'MHz ~ ' + str(endFreq/1e6) + 'MHz    RBW: '+str((self.rbw/1e6))+'MHz    SweepTime: '+str((self.sweepTime*1000))+'ms',fontsize=12)
             
             ticks = self.plot.get_xticks()/10e5
@@ -190,3 +173,8 @@ class SpecTest(object):
         self.parent.canvas.print_figure(plotImgName)  
         
         return False 
+    
+    
+    
+    
+    

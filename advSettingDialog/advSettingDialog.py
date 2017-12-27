@@ -67,13 +67,14 @@ class advSettingsDialog(QDialog):
         self.table.setColumnCount(9)
         self.table.setHorizontalHeaderLabels(QString("Name;Center Frequency(MHz);Frequency Span(MHz);Start Freq(MHz);End Freq(MHz);RBW(MHz);Sweep Time(ms);Sweep Count;Threshold(dBm)").split(";"))
         self.table.setRowCount(0)
+        self.table.cellClicked.connect(self.cellch)
         header = self.table.horizontalHeader()
         header.setResizeMode(QHeaderView.ResizeToContents)
         header.setStretchLastSection(True)
         
         self.disableTableModification=True
         
-        self.table.currentItemChanged.connect(self.setTableValues) 
+#         self.table.currentItemChanged.connect(self.setTableValues) 
        
         hbox=QHBoxLayout()
         hbox.addStretch()
@@ -95,7 +96,9 @@ class advSettingsDialog(QDialog):
         self.vert.addLayout(hbox2)
         self.vert.addWidget(self.b_box)
         self.setLayout(self.vert)
-        
+    def cellch(self):
+        print self.table.currentRow()
+        print self.parent.testList[self.table.currentRow()].name
         
     def click_ok(self):
         self.setTableValues()
@@ -114,8 +117,13 @@ class advSettingsDialog(QDialog):
         
         #delete list entry
         if length>1:
-            row=self.table.currentRow()
-            del self.parent.testList[row]
+            row=int(self.table.currentRow())
+#             del self.parent.testList[row]
+            x=self.parent.testList.pop(row)
+            print "deleted ", x.name
+            for i in self.parent.testList:
+                print i.name
+            
             
             #update table
             length=len(self.parent.testList)
@@ -139,25 +147,32 @@ class advSettingsDialog(QDialog):
                         'Open', '', 
                         file_choices))
         if path:
-            wb2 = load_workbook(path)   #load openpyxl workbook
-            names=wb2.get_sheet_names() #get name of data sheet
-            ws=wb2[str(names[0])];      #set active worksheet to data sheet
-            
-            self.parent.testList=[]
-            
-            i=0
-            while ws['A'+str(i+1)].value!=None:
-                self.parent.testList.append(SpecTest(parent=self.parent, plot=self.parent.plot, testNum=len(self.parent.testList), name="New Test",rbw=100e3,sweepTime=0.01,sweepNum=20,freqCenter=1e9,freqSpan=1e9,threshold=-50))
-                self.parent.testList[i].name=str(ws['A'+str(i+1)].value)
-                self.parent.testList[i].freqCenter=int(float(ws['B'+str(i+1)].value))*1e6
-                self.parent.testList[i].freqSpan=int(float(ws['C'+str(i+1)].value))*1e6
-                self.parent.testList[i].rbw=float(ws['F'+str(i+1)].value)*1e6
-                self.parent.testList[i].sweepTime=float(ws['G'+str(i+1)].value)/1e3
-                self.parent.testList[i].sweepNum=int(float(ws['H'+str(i+1)].value))
-                self.parent.testList[i].threshold=int(float(ws['I'+str(i+1)].value))
-                i+=1
-            self.updateTable()
-            
+            try:
+                wb2 = load_workbook(path)   #load openpyxl workbook
+                names=wb2.get_sheet_names() #get name of data sheet
+                ws=wb2[str(names[0])];      #set active worksheet to data sheet
+                
+                
+                configVerifier=str(ws['XX1'].value)
+                if configVerifier!="testConfig":
+                    self.show_errorDialog("File Import Error!", "The selected file is not a valid configuration file.!", "Please import a different file.")
+                    return
+                
+                self.parent.testList=[]
+                i=0
+                while ws['A'+str(i+1)].value!=None:
+                    self.parent.testList.append(SpecTest(parent=self.parent, plot=self.parent.plot, testNum=len(self.parent.testList), name="New Test",rbw=100e3,sweepTime=0.01,sweepNum=20,freqCenter=1e9,freqSpan=1e9,threshold=-50))
+                    self.parent.testList[i].name=str(ws['A'+str(i+1)].value)
+                    self.parent.testList[i].freqCenter=int(float(ws['B'+str(i+1)].value))*1e6
+                    self.parent.testList[i].freqSpan=int(float(ws['C'+str(i+1)].value))*1e6
+                    self.parent.testList[i].rbw=float(ws['F'+str(i+1)].value)*1e6
+                    self.parent.testList[i].sweepTime=float(ws['G'+str(i+1)].value)/1e3
+                    self.parent.testList[i].sweepNum=int(float(ws['H'+str(i+1)].value))
+                    self.parent.testList[i].threshold=int(float(ws['I'+str(i+1)].value))
+                    i+=1
+                self.updateTable()
+            except:
+                self.show_errorDialog("File Import Error!", "There was an error importing the Configuration File!", "Please import a different file.")
             
     
     def click_export(self):
@@ -179,6 +194,7 @@ class advSettingsDialog(QDialog):
                 ws['G'+str(i+1)]=str(self.table.item(i, 6).text())
                 ws['H'+str(i+1)]=str(self.table.item(i, 7).text())
                 ws['I'+str(i+1)]=str(self.table.item(i, 8).text())
+            ws['XX1']="testConfig"
             try:
                 wb.save(path)
             except: 
@@ -187,6 +203,7 @@ class advSettingsDialog(QDialog):
                   
     def click_default(self):
         self.parent.buildDefaultTests()
+        self.btn_remove.setEnabled(True)
         self.updateTable()
     
     def setTableValues(self):
@@ -203,8 +220,7 @@ class advSettingsDialog(QDialog):
                 self.parent.testList[i].rbw=float(self.table.item(i,5).text())*1e6
                 self.parent.testList[i].sweepTime=float(self.table.item(i,6).text())/1e3
                 self.parent.testList[i].sweepNum=int(float(self.table.item(i,7).text()))
-                self.parent.testList[i].threshold=int(float(self.table.item(i,8).text()))
-
+                self.parent.testList[i].threshold=int(float(self.table.item(i,8).text())) 
             self.updateTable()
             
     def updateTable(self):
@@ -241,8 +257,15 @@ class advSettingsDialog(QDialog):
                 if self.table.currentRow()==-1:
                     self.table.setCurrentCell(0, 0)
    
-   
-   
+    def show_errorDialog(self,title,text,info):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Critical)
+        msg.setText(text)
+        msg.setInformativeText(info)
+        msg.setWindowTitle(title)
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.exec_()
+
    
    
    
