@@ -44,7 +44,7 @@ from SpecTest import SpecTest
 class Application(QMainWindow):
     def __init__(self, parent=None):
         QMainWindow.__init__(self, parent)
-        self.setWindowTitle("Race Site RF Spectrum Tester")
+        self.setWindowTitle("Race Site Background Noise Scanner")
         self.createForm()
         self.foundSpec=False
         self.specan=SpecAnalyzer()
@@ -142,11 +142,11 @@ class Application(QMainWindow):
 
     def buildDefaultTests(self):
         self.testList=[]
-        self.testList.append(SpecTest(parent=self, plot=self.plot, testNum=0, name="5.5 GHz",rbw=157.1e3,sweepTime=0.01,sweepNum=20,freqCenter=5500e6,freqSpan=1e9,threshold=-50))
-        self.testList.append(SpecTest(parent=self, plot=self.plot, testNum=1, name="4 GHz",rbw=157.1e3,sweepTime=0.01,sweepNum=20,freqCenter=4000e6,freqSpan=1e9,threshold=-50))
-        self.testList.append(SpecTest(parent=self, plot=self.plot, testNum=2, name="915 MHz",rbw=39.45e3,sweepTime=0.01,sweepNum=20,freqCenter=915e6,freqSpan=100e6,threshold=-50))
-        self.testList.append(SpecTest(parent=self, plot=self.plot, testNum=3, name="863 MHz",rbw=39.45e3,sweepTime=0.01,sweepNum=20,freqCenter=863e6,freqSpan=100e6,threshold=-50))
-        self.testList.append(SpecTest(parent=self, plot=self.plot, testNum=4, name="Wide Band",rbw=315.6e3,sweepTime=0.001,sweepNum=20,freqCenter=3015e6,freqSpan=5970e6,threshold=-50))
+        self.testList.append(SpecTest(parent=self, plot=self.plot, testNum=0, name="5500 MHz",rbw=157.1e3,sweepTime=0.01,sweepNum=20,freqCenter=5500e6,freqSpan=1e9,threshold=-60))
+        self.testList.append(SpecTest(parent=self, plot=self.plot, testNum=1, name="4000 MHz",rbw=157.1e3,sweepTime=0.01,sweepNum=20,freqCenter=4000e6,freqSpan=1e9,threshold=-60))
+        self.testList.append(SpecTest(parent=self, plot=self.plot, testNum=2, name="915 MHz",rbw=39.45e3,sweepTime=0.01,sweepNum=20,freqCenter=915e6,freqSpan=100e6,threshold=-60))
+        self.testList.append(SpecTest(parent=self, plot=self.plot, testNum=3, name="863 MHz",rbw=39.45e3,sweepTime=0.01,sweepNum=20,freqCenter=863e6,freqSpan=100e6,threshold=-60))
+        self.testList.append(SpecTest(parent=self, plot=self.plot, testNum=4, name="Wide Band(30~6000 MHz)",rbw=315.6e3,sweepTime=0.001,sweepNum=20,freqCenter=3015e6,freqSpan=5970e6,threshold=-60))
         
     def click_Run(self):
         #=======================================================================
@@ -246,8 +246,9 @@ class Application(QMainWindow):
         
         self.btn_saveAs.setEnabled(False)
         self.btn_run.setEnabled(False)
-        self.saveInfo.setText("Saving Data(this may take a few minutes)...")
+        self.saveInfo.setText("Saving Data, Please wait. This may take several minutes...")
         self.btn_advSettings.setEnabled(False)
+        
         self.updateUi()
         
         file_choices = "Excel Workbook ( *.xlsx)"
@@ -282,18 +283,24 @@ class Application(QMainWindow):
                  
                 c1 = LineChart()
                  
-                c1.title = str(test.name)
+                c1.title = str(test.title)
                 c1.style = 1
                 c1.y_axis.title = 'Power(dBm)'
                 c1.x_axis.title = 'Frequency(MHz)'
                 c1.add_data(y)
                 c1.set_categories(x)
+                c1.y_axis.scaling.min = test.dataMin
+                c1.y_axis.scaling.max = test.dataMax
                 s0 = c1.series[0]
                 s0.graphicalProperties.line.solidFill = "0055FF"
-#                 s0.graphicalProperties.line.dashStyle = "sysDot"
                 s0.graphicalProperties.line.width = 100 # width in EMUs
                 
                 c1.x_axis.tickLblPos = "low"
+                c1.height=10
+                c1.width=30
+                
+                
+                
                 ws.add_chart(c1, "c1")
                 
                 i+=1
@@ -372,6 +379,7 @@ class Application(QMainWindow):
         else:
             self.deviceInfo.setText("No spectrum analyzer Found")
             self.btn_findDevice.setEnabled(True)
+    
     
     def show_errorDialog(self,title,text,info):
         msg = QMessageBox()
